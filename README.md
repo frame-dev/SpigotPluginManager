@@ -1,0 +1,10 @@
+# Spigot Plugin Manager
+A simple Spigot plugin manager to help you manage your Spigot server plugins easily.
+## Features
+- Install, update, and remove plugins with ease.
+- Enable or disable plugins as needed.
+
+## Installation
+1. Download the latest version of the Spigot Plugin Manager from the [releases page](#).
+2. Open it with `java -jar SpigotPluginManager-1.0-SNAPSHOT.jar`.
+3. Follow the on-screen instructions to set up your Spigot server plugins.
