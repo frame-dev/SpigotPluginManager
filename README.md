@@ -4,6 +4,11 @@ A simple Spigot plugin manager to help you manage your Spigot server plugins eas
 - Install, update, and remove plugins with ease.
 - Enable or disable plugins as needed.
 
+## Requirements
+- Java 21 or higher
+- Spigot server version 1.16 or higher
+- Internet connection for downloading plugins
+
 ## Installation
 1. Download the latest version of the Spigot Plugin Manager from the [releases page](#).
 2. Open it with `java -jar SpigotPluginManager-1.0-SNAPSHOT.jar`.
