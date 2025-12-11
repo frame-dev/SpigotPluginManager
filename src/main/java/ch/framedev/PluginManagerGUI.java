@@ -1,6 +1,10 @@
 package ch.framedev;
 
 import javax.swing.*;
+import javax.swing.border.EmptyBorder;
+import javax.swing.border.TitledBorder;
+import javax.swing.event.ListSelectionEvent;
+import java.awt.*;
 import java.io.File;
 import java.io.InputStream;
 import java.net.URI;
@@ -17,16 +21,31 @@ public class PluginManagerGUI extends JFrame {
     private final DefaultListModel<String> availableModel;
     private final DefaultListModel<String> installedModel;
 
+    private final JButton disableButton;
+    private final JButton enableButton;
+    private final JButton refreshButton;
+    private final JButton installButton;
+    private final JButton installFromURLButton;
+    private final JButton uninstallButton;
+
     public PluginManagerGUI() {
         setTitle("Spigot Plugin Manager");
-        setSize(500, 400);
+        setSize(700, 500);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
 
         availableModel = new DefaultListModel<>();
         installedModel = new DefaultListModel<>();
 
-        JLabel label = new JLabel("Welcome to Spigot Plugin Manager", SwingConstants.CENTER);
+        JLabel header = new JLabel("Spigot Plugin Manager", SwingConstants.CENTER);
+        header.setFont(header.getFont().deriveFont(Font.BOLD, 18f));
+        header.setBorder(new EmptyBorder(8, 8, 8, 8));
+
+        this.availablePluginsList = new JList<>(availableModel);
+        this.installedPluginsList = new JList<>(installedModel);
+        availablePluginsList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        installedPluginsList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+
         if (Main.config.containsKey("plugin-directory")) {
             this.pluginDirectory = new File(Main.config.getString("plugin-directory"));
             if (this.pluginDirectory.isDirectory()) {
@@ -36,87 +55,84 @@ public class PluginManagerGUI extends JFrame {
             } else {
                 this.selectedDirLabel = new JLabel("No directory selected", SwingConstants.CENTER);
             }
-        } else
+        } else {
             this.selectedDirLabel = new JLabel("No directory selected", SwingConstants.CENTER);
+        }
+        this.selectedDirLabel.setBorder(new EmptyBorder(4, 4, 10, 4));
 
-        this.availablePluginsList = new JList<>(availableModel);
-        this.installedPluginsList = new JList<>(installedModel);
 
+        // Buttons
+        disableButton = new JButton("Disable");
+        enableButton = new JButton("Enable");
+        refreshButton = new JButton("Refresh");
+        installButton = new JButton("Install...");
+        installFromURLButton = new JButton("Install from URL...");
+        uninstallButton = new JButton("Uninstall");
+
+        // Setup listeners and panels
         setupJMenu();
+        setupActions();
 
-        setLayout(new BoxLayout(getContentPane(), BoxLayout.Y_AXIS));
-        add(label);
-        add(selectedDirLabel);
-        add(new JLabel("Available Plugins:"));
-        add(new JScrollPane(availablePluginsList));
-        add(new JLabel("Installed Plugins (.jar):"));
-        add(new JScrollPane(installedPluginsList));
+        JPanel topPanel = new JPanel(new BorderLayout());
+        topPanel.add(header, BorderLayout.NORTH);
+        topPanel.add(selectedDirLabel, BorderLayout.SOUTH);
+        topPanel.setBorder(new EmptyBorder(6, 6, 6, 6));
 
-        JButton disableButton = getDisableButton();
-        add(disableButton);
+        // Lists in split pane with titled borders
+        JScrollPane availableScroll = new JScrollPane(availablePluginsList);
+        availableScroll.setBorder(new TitledBorder("Available Plugins"));
+        JScrollPane installedScroll = new JScrollPane(installedPluginsList);
+        installedScroll.setBorder(new TitledBorder("Installed Plugins (.jar)"));
 
-        JButton enableButton = getEnableButton();
-        add(enableButton);
-        JButton refreshButton = new JButton("Refresh Plugin Lists");
-        refreshButton.addActionListener(e -> {
-            loadAvailablePlugins();
-            loadInstalledPlugins();
-        });
-        add(refreshButton);
-        JButton installButton = getInstallButton();
-        add(installButton);
-        JButton installFromURLButton = getInstallFromURLButton();
-        add(installFromURLButton);
-        JButton uninstallButton = getUninstallButton();
-        add(uninstallButton);
+        JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, availableScroll, installedScroll);
+        split.setResizeWeight(0.5);
+        split.setBorder(new EmptyBorder(6, 6, 6, 6));
 
-        if(!Main.config.containsKey("first-run")) {
+        // Button bar
+        JPanel buttonBar = new JPanel();
+        buttonBar.setLayout(new FlowLayout(FlowLayout.CENTER, 8, 8));
+        buttonBar.add(installButton);
+        buttonBar.add(installFromURLButton);
+        buttonBar.add(enableButton);
+        buttonBar.add(disableButton);
+        buttonBar.add(uninstallButton);
+        buttonBar.add(refreshButton);
+
+        // Root layout
+        Container content = getContentPane();
+        content.setLayout(new BorderLayout());
+        content.add(topPanel, BorderLayout.NORTH);
+        content.add(split, BorderLayout.CENTER);
+        content.add(buttonBar, BorderLayout.SOUTH);
+
+        // Selection listeners to update button state
+        availablePluginsList.addListSelectionListener(this::onSelectionChanged);
+        installedPluginsList.addListSelectionListener(this::onSelectionChanged);
+
+        updateButtons();
+
+        if (!Main.config.containsKey("first-run")) {
             Main.config.set("first-run", true);
             Main.config.save();
             JOptionPane.showMessageDialog(this, "Welcome to Spigot Plugin Manager!\nPlease select your plugin directory from the File menu.", "Welcome", JOptionPane.INFORMATION_MESSAGE);
         }
     }
 
-    private JButton getUninstallButton() {
-        JButton uninstallButton = new JButton("Uninstall Selected Plugin");
-        uninstallButton.addActionListener(e -> {
-            String selected = installedModel.getSize() > 0 ? installedModel.getElementAt(installedPluginsList.getSelectedIndex()) : null;
-            if (selected != null && pluginDirectory != null) {
-                File pluginFile = new File(pluginDirectory, selected);
-                if (pluginFile.delete()) {
-                    loadAvailablePlugins();
-                    loadInstalledPlugins();
-                    JOptionPane.showMessageDialog(this, "Plugin uninstalled: " + selected);
-                } else {
-                    JOptionPane.showMessageDialog(this, "Failed to uninstall plugin: " + selected, "Error", JOptionPane.ERROR_MESSAGE);
-                }
-            }
-        });
-        return uninstallButton;
+    private void onSelectionChanged(ListSelectionEvent e) {
+        if (!e.getValueIsAdjusting()) updateButtons();
     }
 
-    private JButton getInstallFromURLButton() {
-        JButton installFromURLButton = new JButton("Install Plugin from URL");
-        installFromURLButton.addActionListener(e -> {
-            String url = JOptionPane.showInputDialog(this, "Enter Plugin URL:");
-            if (url != null && !url.trim().isEmpty() && pluginDirectory != null) {
-                try (InputStream in = new URI(url).toURL().openStream()) {
-                    String fileName = url.substring(url.lastIndexOf('/') + 1);
-                    File destFile = new File(pluginDirectory, fileName);
-                    Files.copy(in, destFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-                    loadAvailablePlugins();
-                    loadInstalledPlugins();
-                    JOptionPane.showMessageDialog(this, "Plugin installed from URL: " + fileName);
-                } catch (Exception ex) {
-                    JOptionPane.showMessageDialog(this, "Failed to install plugin from URL.", "Error", JOptionPane.ERROR_MESSAGE);
-                }
-            }
-        });
-        return installFromURLButton;
+    private void updateButtons() {
+        String avail = (availablePluginsList != null) ? availablePluginsList.getSelectedValue() : null;
+        String inst  = (installedPluginsList  != null) ? installedPluginsList.getSelectedValue()  : null;
+
+        if (enableButton != null)  enableButton.setEnabled(avail != null && avail.endsWith(".disabled"));
+        if (disableButton != null) disableButton.setEnabled(avail != null && avail.endsWith(".jar"));
+        if (uninstallButton != null) uninstallButton.setEnabled(inst != null);
     }
 
-    private JButton getInstallButton() {
-        JButton installButton = new JButton("Install Plugin");
+    private void setupActions() {
+        // Install from disk
         installButton.addActionListener(e -> {
             JFileChooser fileChooser = new JFileChooser();
             int returnValue = fileChooser.showOpenDialog(this);
@@ -135,11 +151,25 @@ public class PluginManagerGUI extends JFrame {
                 }
             }
         });
-        return installButton;
-    }
 
-    private JButton getEnableButton() {
-        JButton enableButton = new JButton("Enable Selected Plugin");
+        // Install from URL
+        installFromURLButton.addActionListener(e -> {
+            String url = JOptionPane.showInputDialog(this, "Enter Plugin URL:");
+            if (url != null && !url.trim().isEmpty() && pluginDirectory != null) {
+                try (InputStream in = new URI(url).toURL().openStream()) {
+                    String fileName = url.substring(url.lastIndexOf('/') + 1);
+                    File destFile = new File(pluginDirectory, fileName);
+                    Files.copy(in, destFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                    loadAvailablePlugins();
+                    loadInstalledPlugins();
+                    JOptionPane.showMessageDialog(this, "Plugin installed from URL: " + fileName);
+                } catch (Exception ex) {
+                    JOptionPane.showMessageDialog(this, "Failed to install plugin from URL.", "Error", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        });
+
+        // Enable plugin (.disabled -> .jar)
         enableButton.addActionListener(e -> {
             String selected = availablePluginsList.getSelectedValue();
             if (selected != null && pluginDirectory != null && selected.endsWith(".disabled")) {
@@ -155,11 +185,8 @@ public class PluginManagerGUI extends JFrame {
                 }
             }
         });
-        return enableButton;
-    }
 
-    private JButton getDisableButton() {
-        JButton disableButton = new JButton("Disable Selected Plugin");
+        // Disable plugin (.jar -> .disabled)
         disableButton.addActionListener(e -> {
             String selected = availablePluginsList.getSelectedValue();
             if (selected != null && pluginDirectory != null && selected.endsWith(".jar")) {
@@ -174,7 +201,26 @@ public class PluginManagerGUI extends JFrame {
                 }
             }
         });
-        return disableButton;
+
+        // Uninstall plugin (delete .jar)
+        uninstallButton.addActionListener(e -> {
+            String selected = installedPluginsList.getSelectedValue();
+            if (selected != null && pluginDirectory != null) {
+                File pluginFile = new File(pluginDirectory, selected);
+                if (pluginFile.delete()) {
+                    loadAvailablePlugins();
+                    loadInstalledPlugins();
+                    JOptionPane.showMessageDialog(this, "Plugin uninstalled: " + selected);
+                } else {
+                    JOptionPane.showMessageDialog(this, "Failed to uninstall plugin: " + selected, "Error", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        });
+
+        refreshButton.addActionListener(e -> {
+            loadAvailablePlugins();
+            loadInstalledPlugins();
+        });
     }
 
     private void setupJMenu() {
@@ -202,7 +248,15 @@ public class PluginManagerGUI extends JFrame {
                 }
             }
         });
+        JMenuItem aboutItem = new JMenuItem("About");
+        aboutItem.addActionListener(e -> JOptionPane.showMessageDialog(this, "Spigot Plugin Manager\nVersion 1.0\nDeveloped by FrameDev", "About", JOptionPane.INFORMATION_MESSAGE));
+        JMenuItem helpItem = new JMenuItem("Help");
+        helpItem.addActionListener(e -> JOptionPane.showMessageDialog(this, "To use this application, select your Spigot plugin directory from the File menu.\nYou can install, uninstall, enable, and disable plugins using the provided buttons.", "Help", JOptionPane.INFORMATION_MESSAGE));
+
         fileMenu.add(selectItem);
+        fileMenu.add(helpItem);
+        fileMenu.add(aboutItem);
+        fileMenu.addSeparator();
         fileMenu.add(exitItem);
 
         menuBar.add(fileMenu);
@@ -219,6 +273,7 @@ public class PluginManagerGUI extends JFrame {
                     availableModel.addElement(file.getName());
             }
         }
+        updateButtons();
     }
 
     private void loadInstalledPlugins() {
@@ -231,6 +286,7 @@ public class PluginManagerGUI extends JFrame {
                     installedModel.addElement(file.getName());
             }
         }
+        updateButtons();
     }
 
     public void display() {
