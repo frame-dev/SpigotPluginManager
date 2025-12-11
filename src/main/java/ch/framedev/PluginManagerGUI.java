@@ -2,6 +2,7 @@ package ch.framedev;
 
 import javax.swing.*;
 import java.io.File;
+import java.io.InputStream;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
@@ -97,9 +98,9 @@ public class PluginManagerGUI extends JFrame {
     private JButton getInstallFromURLButton() {
         JButton installFromURLButton = new JButton("Install Plugin from URL");
         installFromURLButton.addActionListener(e -> {
-            String url = JOptionPane.showInputDialog(this, "Enter P1lugin URL:");
+            String url = JOptionPane.showInputDialog(this, "Enter Plugin URL:");
             if (url != null && !url.trim().isEmpty() && pluginDirectory != null) {
-                try (java.io.InputStream in = new URI(url).toURL().openStream()) {
+                try (InputStream in = new URI(url).toURL().openStream()) {
                     String fileName = url.substring(url.lastIndexOf('/') + 1);
                     File destFile = new File(pluginDirectory, fileName);
                     Files.copy(in, destFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
