@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.jar.JarFile;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.zip.ZipEntry;
 
@@ -26,7 +27,7 @@ public class PluginHelper {
                 return yaml.load(inputStream);
             }
         } catch (Exception e) {
-            LOGGER.severe("Error reading plugin.yml from " + pluginFile.getName() + ": " + e.getMessage());
+            LOGGER.log(Level.SEVERE, "Error reading plugin.yml from " + pluginFile.getName() + ": " + e.getMessage(), e);
             return null;
         }
     }

@@ -49,6 +49,13 @@ Access settings via `File > Settings`:
 3. Build with Maven: `mvn clean package`
 4. The built JAR will be in the `target` directory.
 
+## Screenshots
+![Screenshot](screenshots/screenshot_1.png)
+
+![Screenshot](screenshots/screenshot_2.png)
+
+![Screenshot](screenshots/screenshot_3.png)
+
 ## License
 
 This project is open source. See the [LICENSE](LICENSE) file for details.
