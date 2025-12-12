@@ -16,7 +16,13 @@ public class PluginHelper {
 
     private static final Logger LOGGER = Logger.getLogger(PluginHelper.class.getName());
 
-    public static Map<String, Object> getPluginYml(File pluginFile) {
+    /**
+     * Reads the plugin.yml file from the given plugin JAR file and returns its contents as a Map.
+     *
+     * @param pluginFile The plugin JAR file.
+     * @return A Map representing the contents of plugin.yml, or null if an error occurs.
+     */
+    private static Map<String, Object> getPluginYml(File pluginFile) {
         try (JarFile jarFile = new JarFile(pluginFile)) {
             ZipEntry entry = jarFile.getEntry("plugin.yml");
             if (entry == null) {
@@ -32,6 +38,12 @@ public class PluginHelper {
         }
     }
 
+    /**
+     * Retrieves the name of the plugin from its plugin.yml file.
+     *
+     * @param pluginFile The plugin JAR file.
+     * @return The name of the plugin, or null if not found.
+     */
     public static String getPluginName(File pluginFile) {
         Map<String, Object> pluginYml = getPluginYml(pluginFile);
         if (pluginYml != null) {
@@ -40,6 +52,12 @@ public class PluginHelper {
         return null;
     }
 
+    /**
+     * Retrieves the version of the plugin from its plugin.yml file.
+     *
+     * @param pluginFile The plugin JAR file.
+     * @return The version of the plugin, or null if not found.
+     */
     public static String getPluginVersion(File pluginFile) {
         Map<String, Object> pluginYml = getPluginYml(pluginFile);
         if (pluginYml != null) {
@@ -48,6 +66,12 @@ public class PluginHelper {
         return null;
     }
 
+    /**
+     * Retrieves the description of the plugin from its plugin.yml file.
+     *
+     * @param pluginFile The plugin JAR file.
+     * @return The description of the plugin, or null if not found.
+     */
     public static String getPluginDescription(File pluginFile) {
         Map<String, Object> pluginYml = getPluginYml(pluginFile);
         if (pluginYml != null) {
@@ -56,6 +80,12 @@ public class PluginHelper {
         return null;
     }
 
+    /**
+     * Retrieves the commands defined in the plugin's plugin.yml file.
+     *
+     * @param pluginFile The plugin JAR file.
+     * @return A Map of command names to their definitions.
+     */
     @SuppressWarnings("unchecked")
     public static Map<String, Object> getCommands(File pluginFile) {
         Map<String, Object> commands = new HashMap<>();
@@ -66,6 +96,12 @@ public class PluginHelper {
         return commands;
     }
 
+    /**
+     * Retrieves the authors of the plugin from its plugin.yml file.
+     *
+     * @param pluginFile The plugin JAR file.
+     * @return A List of authors.
+     */
     @SuppressWarnings("unchecked")
     public static List<String> getPluginAuthors(File pluginFile) {
         Map<String, Object> pluginYml = getPluginYml(pluginFile);
