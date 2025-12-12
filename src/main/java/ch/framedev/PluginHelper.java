@@ -6,11 +6,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.jar.JarFile;
+import java.util.logging.Logger;
 import java.util.zip.ZipEntry;
 
 import org.yaml.snakeyaml.Yaml;
 
 public class PluginHelper {
+
+    private static final Logger LOGGER = Logger.getLogger(PluginHelper.class.getName());
 
     public static Map<String, Object> getPluginYml(File pluginFile) {
         try (JarFile jarFile = new JarFile(pluginFile)) {
@@ -23,7 +26,7 @@ public class PluginHelper {
                 return yaml.load(inputStream);
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            LOGGER.severe("Error reading plugin.yml from " + pluginFile.getName() + ": " + e.getMessage());
             return null;
         }
     }
