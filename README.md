@@ -9,7 +9,7 @@ This Project uses the Java Swing framework for the GUI (Desktop Environment requ
 
 ## Requirements
 - Java 21 or higher
-- Spigot server version 1.16 or higher
+- Spigot server version 1.16 or higher (local)
 - Internet connection for downloading plugins
 
 ## Installation
