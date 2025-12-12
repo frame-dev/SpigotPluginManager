@@ -316,7 +316,7 @@ public class PluginManagerGUI extends JFrame {
             }
         });
         JMenuItem aboutItem = new JMenuItem("About");
-        aboutItem.addActionListener(e -> JOptionPane.showMessageDialog(this, "Spigot Plugin Manager\nVersion 1.0\nDeveloped by FrameDev", "About", JOptionPane.INFORMATION_MESSAGE));
+        aboutItem.addActionListener(e -> JOptionPane.showMessageDialog(this, "Spigot Plugin Manager\nVersion 1.2-SNAPSHOT\nDeveloped by FrameDev", "About", JOptionPane.INFORMATION_MESSAGE));
         JMenuItem helpItem = new JMenuItem("Help");
         helpItem.addActionListener(e -> JOptionPane.showMessageDialog(this, "To use this application, select your Spigot plugin directory from the File menu.\nYou can install, uninstall, enable, and disable plugins using the provided buttons.", "Help", JOptionPane.INFORMATION_MESSAGE));
         JMenuItem settingsItem = new JMenuItem("Settings");
