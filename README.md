@@ -20,7 +20,7 @@ This project uses the Java Swing framework for the GUI (Desktop Environment requ
 ## Installation
 
 1. Download the latest version from the [releases page](https://github.com/frame-dev/SpigotPluginManager/releases).
-2. Run the application with `java -jar SpigotPluginManager-1.0-SNAPSHOT.jar`
+2. Run the application with `java -jar SpigotPluginManager-1.1-SNAPSHOT.jar`
 3. Select your Spigot server's `plugins` folder from the **File** menu.
 4. Manage your plugins using the provided buttons.
 
