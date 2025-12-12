@@ -10,6 +10,8 @@ import java.io.InputStream;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
+import java.util.List;
+import java.util.Map;
 
 public class PluginManagerGUI extends JFrame {
 
@@ -30,9 +32,11 @@ public class PluginManagerGUI extends JFrame {
     private final JButton installFromURLButton;
     private final JButton uninstallButton;
 
+    private final JTextArea infoArea;
+
     public PluginManagerGUI() {
         setTitle("Spigot Plugin Manager");
-        setSize(700, 500);
+        setSize(900, 600);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
 
@@ -85,9 +89,19 @@ public class PluginManagerGUI extends JFrame {
         JScrollPane installedScroll = new JScrollPane(installedPluginsList);
         installedScroll.setBorder(new TitledBorder("Installed Plugins (.jar)"));
 
-        JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, availableScroll, installedScroll);
-        split.setResizeWeight(0.5);
-        split.setBorder(new EmptyBorder(6, 6, 6, 6));
+        infoArea = new JTextArea();
+        infoArea.setEditable(false);
+        JScrollPane pluginInfoScroll = new JScrollPane(infoArea);
+        pluginInfoScroll.setBorder(new TitledBorder("Plugin Info"));
+
+        // Left split: available and installed lists
+        JSplitPane leftSplit = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, availableScroll, installedScroll);
+        leftSplit.setResizeWeight(0.5);
+
+        // Main split: lists on left, info on right
+        JSplitPane mainSplit = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, leftSplit, pluginInfoScroll);
+        mainSplit.setResizeWeight(0.6);
+        mainSplit.setBorder(new EmptyBorder(6, 6, 6, 6));
 
         // Button bar
         JPanel buttonBar = new JPanel();
@@ -102,13 +116,14 @@ public class PluginManagerGUI extends JFrame {
         // Root layout
         setLayout(new BorderLayout());
         add(topPanel, BorderLayout.NORTH);
-        add(split, BorderLayout.CENTER);
+        add(mainSplit, BorderLayout.CENTER);
         add(buttonBar, BorderLayout.SOUTH);
 
         // Selection listeners to update button state
         availablePluginsList.addListSelectionListener(this::onSelectionChanged);
         installedPluginsList.addListSelectionListener(this::onSelectionChanged);
 
+        // Initial button state update
         updateButtons();
 
         if (!Main.config.containsKey("first-run")) {
@@ -118,10 +133,61 @@ public class PluginManagerGUI extends JFrame {
         }
     }
 
+    /**
+     * Handle selection changes in plugin lists
+     */
     private void onSelectionChanged(ListSelectionEvent e) {
-        if (!e.getValueIsAdjusting()) updateButtons();
+        if (!e.getValueIsAdjusting()) {
+            updateButtons();
+            updatePluginInfo();
+        }
     }
 
+    /**
+     * Update the plugin info area based on selection
+     */
+    private void updatePluginInfo() {
+        String selected = availablePluginsList.getSelectedValue();
+        if (selected == null || pluginDirectory == null) {
+            infoArea.setText("");
+            return;
+        }
+        File pluginFile = new File(pluginDirectory, selected);
+        if (pluginFile.exists() && (selected.endsWith(".jar") || selected.endsWith(DISABLED_SUFFIX))) {
+            String name = PluginHelper.getPluginName(pluginFile);
+            String version = PluginHelper.getPluginVersion(pluginFile);
+            String description = PluginHelper.getPluginDescription(pluginFile);
+            Map<String, Object> commands = PluginHelper.getCommands(pluginFile);
+            List<String> authors = PluginHelper.getPluginAuthors(pluginFile);
+            StringBuilder infoBuilder = new StringBuilder();
+            infoBuilder.append("Name: ").append(name != null ? name : "Unknown").append("\n");
+            infoBuilder.append("Version: ").append(version != null ? version : "Unknown").append("\n\n");
+            infoBuilder.append("Description:\n").append(description != null ? description : "No description available").append("\n");
+            infoBuilder.append("\nCommands:\n");
+            if (commands != null && !commands.isEmpty()) {
+                for (String cmd : commands.keySet()) {
+                    infoBuilder.append(" - ").append(cmd).append("\n");
+                }
+            } else {
+                infoBuilder.append("No commands available\n");
+            }
+            infoBuilder.append("\nAuthors:\n");
+            if (!authors.isEmpty()) {
+                for (String author : authors) {
+                    infoBuilder.append(" - ").append(author).append("\n");
+                }
+            } else {
+                infoBuilder.append("No authors available\n");
+            }
+            infoArea.setText(infoBuilder.toString());
+        } else {
+            infoArea.setText("Not a plugin file");
+        }
+    }
+
+    /**
+     * Update button states based on current selection
+     */
     private void updateButtons() {
         String avail = (availablePluginsList != null) ? availablePluginsList.getSelectedValue() : null;
         String inst = (installedPluginsList != null) ? installedPluginsList.getSelectedValue() : null;
@@ -131,6 +197,9 @@ public class PluginManagerGUI extends JFrame {
         if (uninstallButton != null) uninstallButton.setEnabled(inst != null);
     }
 
+    /**
+     * Setup action listeners for buttons
+     */
     private void setupActions() {
         installButton.addActionListener(e -> {
             JFileChooser fileChooser = new JFileChooser();
@@ -171,7 +240,7 @@ public class PluginManagerGUI extends JFrame {
             String selected = availablePluginsList.getSelectedValue();
             if (selected != null && pluginDirectory != null && selected.endsWith(DISABLED_SUFFIX)) {
                 File disabledFile = new File(pluginDirectory, selected);
-                String restoredName = selected.replaceFirst(DISABLED_SUFFIX, "");
+                String restoredName = selected.replaceFirst(DISABLED_SUFFIX + "$", "");
                 File pluginFile = new File(pluginDirectory, restoredName);
                 if (disabledFile.renameTo(pluginFile)) {
                     loadAvailablePlugins();
@@ -218,6 +287,9 @@ public class PluginManagerGUI extends JFrame {
         });
     }
 
+    /**
+     * Set up the menu bar
+     */
     private void setupJMenu() {
         JMenuBar menuBar = new JMenuBar();
 
