@@ -294,7 +294,7 @@ public class PluginManagerGUI extends JFrame {
         JMenuBar menuBar = new JMenuBar();
 
         JMenu fileMenu = new JMenu("File");
-        JMenuItem selectItem = new JMenuItem("Select Plugin Folders");
+        JMenuItem selectItem = new JMenuItem("Select Plugin Folder ...");
         JMenuItem exitItem = new JMenuItem("Exit");
         exitItem.addActionListener(e -> System.exit(0));
         selectItem.addActionListener(listener -> {
