@@ -15,6 +15,8 @@ public class PluginManagerGUI extends JFrame {
 
     private File pluginDirectory;
 
+    private static String DISABLED_SUFFIX = Main.config.getString("suffix-for-disabled-plugins", ".disabled");
+
     private final JLabel selectedDirLabel;
     private final JList<String> installedPluginsList;
     private final JList<String> availablePluginsList;
@@ -46,7 +48,7 @@ public class PluginManagerGUI extends JFrame {
         availablePluginsList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         installedPluginsList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 
-        if (Main.config.containsKey("plugin-directory")) {
+        if (Main.config.containsKey("plugin-directory") && Main.config.getBoolean("start-with-latest-folder", true)) {
             this.pluginDirectory = new File(Main.config.getString("plugin-directory"));
             if (this.pluginDirectory.isDirectory()) {
                 this.selectedDirLabel = new JLabel("Selected Directory: " + this.pluginDirectory.getAbsolutePath(), SwingConstants.CENTER);
@@ -59,7 +61,6 @@ public class PluginManagerGUI extends JFrame {
             this.selectedDirLabel = new JLabel("No directory selected", SwingConstants.CENTER);
         }
         this.selectedDirLabel.setBorder(new EmptyBorder(4, 4, 10, 4));
-
 
         // Buttons
         disableButton = new JButton("Disable");
@@ -99,11 +100,10 @@ public class PluginManagerGUI extends JFrame {
         buttonBar.add(refreshButton);
 
         // Root layout
-        Container content = getContentPane();
-        content.setLayout(new BorderLayout());
-        content.add(topPanel, BorderLayout.NORTH);
-        content.add(split, BorderLayout.CENTER);
-        content.add(buttonBar, BorderLayout.SOUTH);
+        setLayout(new BorderLayout());
+        add(topPanel, BorderLayout.NORTH);
+        add(split, BorderLayout.CENTER);
+        add(buttonBar, BorderLayout.SOUTH);
 
         // Selection listeners to update button state
         availablePluginsList.addListSelectionListener(this::onSelectionChanged);
@@ -124,15 +124,14 @@ public class PluginManagerGUI extends JFrame {
 
     private void updateButtons() {
         String avail = (availablePluginsList != null) ? availablePluginsList.getSelectedValue() : null;
-        String inst  = (installedPluginsList  != null) ? installedPluginsList.getSelectedValue()  : null;
+        String inst = (installedPluginsList != null) ? installedPluginsList.getSelectedValue() : null;
 
-        if (enableButton != null)  enableButton.setEnabled(avail != null && avail.endsWith(".disabled"));
+        if (enableButton != null) enableButton.setEnabled(avail != null && avail.endsWith(DISABLED_SUFFIX));
         if (disableButton != null) disableButton.setEnabled(avail != null && avail.endsWith(".jar"));
         if (uninstallButton != null) uninstallButton.setEnabled(inst != null);
     }
 
     private void setupActions() {
-        // Install from disk
         installButton.addActionListener(e -> {
             JFileChooser fileChooser = new JFileChooser();
             int returnValue = fileChooser.showOpenDialog(this);
@@ -152,7 +151,6 @@ public class PluginManagerGUI extends JFrame {
             }
         });
 
-        // Install from URL
         installFromURLButton.addActionListener(e -> {
             String url = JOptionPane.showInputDialog(this, "Enter Plugin URL:");
             if (url != null && !url.trim().isEmpty() && pluginDirectory != null) {
@@ -169,12 +167,11 @@ public class PluginManagerGUI extends JFrame {
             }
         });
 
-        // Enable plugin (.disabled -> .jar)
         enableButton.addActionListener(e -> {
             String selected = availablePluginsList.getSelectedValue();
-            if (selected != null && pluginDirectory != null && selected.endsWith(".disabled")) {
+            if (selected != null && pluginDirectory != null && selected.endsWith(DISABLED_SUFFIX)) {
                 File disabledFile = new File(pluginDirectory, selected);
-                String restoredName = selected.replaceFirst("\\.disabled$", "");
+                String restoredName = selected.replaceFirst(DISABLED_SUFFIX, "");
                 File pluginFile = new File(pluginDirectory, restoredName);
                 if (disabledFile.renameTo(pluginFile)) {
                     loadAvailablePlugins();
@@ -186,12 +183,11 @@ public class PluginManagerGUI extends JFrame {
             }
         });
 
-        // Disable plugin (.jar -> .disabled)
         disableButton.addActionListener(e -> {
             String selected = availablePluginsList.getSelectedValue();
             if (selected != null && pluginDirectory != null && selected.endsWith(".jar")) {
                 File pluginFile = new File(pluginDirectory, selected);
-                File disabledFile = new File(pluginDirectory, selected + ".disabled");
+                File disabledFile = new File(pluginDirectory, selected + DISABLED_SUFFIX);
                 if (pluginFile.renameTo(disabledFile)) {
                     loadAvailablePlugins();
                     loadInstalledPlugins();
@@ -202,7 +198,6 @@ public class PluginManagerGUI extends JFrame {
             }
         });
 
-        // Uninstall plugin (delete .jar)
         uninstallButton.addActionListener(e -> {
             String selected = installedPluginsList.getSelectedValue();
             if (selected != null && pluginDirectory != null) {
@@ -252,10 +247,17 @@ public class PluginManagerGUI extends JFrame {
         aboutItem.addActionListener(e -> JOptionPane.showMessageDialog(this, "Spigot Plugin Manager\nVersion 1.0\nDeveloped by FrameDev", "About", JOptionPane.INFORMATION_MESSAGE));
         JMenuItem helpItem = new JMenuItem("Help");
         helpItem.addActionListener(e -> JOptionPane.showMessageDialog(this, "To use this application, select your Spigot plugin directory from the File menu.\nYou can install, uninstall, enable, and disable plugins using the provided buttons.", "Help", JOptionPane.INFORMATION_MESSAGE));
+        JMenuItem settingsItem = new JMenuItem("Settings");
+        settingsItem.addActionListener(e -> {
+            SettingsGUI settingsGUI = new SettingsGUI();
+            settingsGUI.display();
+        });
 
         fileMenu.add(selectItem);
         fileMenu.add(helpItem);
         fileMenu.add(aboutItem);
+        fileMenu.addSeparator();
+        fileMenu.add(settingsItem);
         fileMenu.addSeparator();
         fileMenu.add(exitItem);
 
@@ -264,6 +266,7 @@ public class PluginManagerGUI extends JFrame {
     }
 
     private void loadAvailablePlugins() {
+        DISABLED_SUFFIX = Main.config.getString("suffix-for-disabled-plugins", ".disabled");
         availableModel.clear();
         if (pluginDirectory == null) return;
         File[] files = pluginDirectory.listFiles();
