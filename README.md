@@ -4,6 +4,8 @@ This Project uses the Java Swing framework for the GUI (Desktop Environment requ
 ## Features
 - Install, update, and remove plugins with ease.
 - Enable or disable plugins as needed.
+- Settings to customize plugin management.
+- User-friendly graphical interface.
 
 ## Requirements
 - Java 21 or higher
