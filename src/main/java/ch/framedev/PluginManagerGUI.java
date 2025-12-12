@@ -167,6 +167,18 @@ public class PluginManagerGUI extends JFrame {
             if (commands != null && !commands.isEmpty()) {
                 for (String cmd : commands.keySet()) {
                     infoBuilder.append(" - ").append(cmd).append("\n");
+                    if (commands.get(cmd) instanceof Map) {
+                        Map<String, Object> cmdDetails = (Map<String, Object>) commands.get(cmd);
+                        if (cmdDetails.containsKey("description")) {
+                            infoBuilder.append("     Description: ").append(cmdDetails.get("description")).append("\n");
+                        }
+                        if (cmdDetails.containsKey("usage")) {
+                            infoBuilder.append("     Usage: ").append(cmdDetails.get("usage")).append("\n");
+                        }
+                        if (cmdDetails.containsKey("aliases")) {
+                            infoBuilder.append("     Aliases: ").append(cmdDetails.get("aliases")).append("\n");
+                        }
+                    }
                 }
             } else {
                 infoBuilder.append("No commands available\n");
