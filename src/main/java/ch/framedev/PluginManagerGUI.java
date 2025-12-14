@@ -455,11 +455,15 @@ public class PluginManagerGUI extends JFrame {
         });
 
         connectRemoteItem.addActionListener(e -> {
-            JTextField hostField = new JTextField();
-            JTextField portField = new JTextField("22");
-            JTextField userField = new JTextField();
+            String lastHost = Main.config.getString("last-remote-host", "");
+            int lastPort = Main.config.getInt("last-remote-port", 22);
+            String lastUser = Main.config.getString("last-remote-username", "");
+            String lastPath = Main.config.getString("last-remote-plugin-path", "/plugins");
+            JTextField hostField = new JTextField(lastHost);
+            JTextField portField = new JTextField(String.valueOf(lastPort));
+            JTextField userField = new JTextField(lastUser);
             JPasswordField passField = new JPasswordField();
-            JTextField pathField = new JTextField("/plugins");
+            JTextField pathField = new JTextField(lastPath);
             Object[] inputs = {
                     "Host:", hostField,
                     "Port:", portField,
@@ -487,6 +491,11 @@ public class PluginManagerGUI extends JFrame {
                     this.selectedDirLabel.setText("Remote: " + remoteConnectionLabel);
                     loadAvailablePlugins();
                     loadInstalledPlugins();
+                    Main.config.set("last-remote-host", host);
+                    Main.config.set("last-remote-port", port);
+                    Main.config.set("last-remote-username", user);
+                    Main.config.set("last-remote-plugin-path", path);
+                    Main.config.save();
                 } catch (Exception ex) {
                     JOptionPane.showMessageDialog(this, "Failed to connect: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
                     remoteMode = false;
