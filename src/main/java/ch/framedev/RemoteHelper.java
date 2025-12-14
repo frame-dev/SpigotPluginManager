@@ -65,7 +65,7 @@ public class RemoteHelper {
         Vector<ChannelSftp.LsEntry> entries = sftp.ls(remoteDir);
         java.util.List<String> names = new ArrayList<>();
         for (ChannelSftp.LsEntry e : entries) {
-            if (!".".equals(e.getFilename()) && !"..".equals(e.getFilename())) {
+            if (!".".equals(e.getFilename()) && !"..".equals(e.getFilename()) && !e.getAttrs().isDir() && !e.getFilename().startsWith(".")) {
                 names.add(e.getFilename());
             }
         }
