@@ -27,6 +27,7 @@ public class RemoteHelper {
     }
 
     // Connect using private key file (optional passphrase)
+    @SuppressWarnings("unused")
     public void connectWithKey(String host, int port, String username, String privateKeyPath, String passphrase, int timeoutMs) throws JSchException {
         if (passphrase == null) jsch.addIdentity(privateKeyPath);
         else jsch.addIdentity(privateKeyPath, passphrase);
@@ -42,6 +43,7 @@ public class RemoteHelper {
         sftp = (ChannelSftp) channel;
     }
 
+    @SuppressWarnings("BooleanMethodIsAlwaysInverted")
     public boolean isConnected() {
         return session != null && session.isConnected() && sftp != null && sftp.isConnected();
     }
@@ -58,6 +60,7 @@ public class RemoteHelper {
     }
 
     // List files in remote directory
+    @SuppressWarnings("unchecked")
     public java.util.List<String> listFiles(String remoteDir) throws SftpException {
         Vector<ChannelSftp.LsEntry> entries = sftp.ls(remoteDir);
         java.util.List<String> names = new ArrayList<>();

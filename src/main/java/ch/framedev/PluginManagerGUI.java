@@ -156,7 +156,6 @@ public class PluginManagerGUI extends JFrame {
     /**
      * Update the plugin info area based on selection
      */
-    @SuppressWarnings("unchecked")
     private void updatePluginInfo() {
         String selected = availablePluginsList.getSelectedValue();
         if (selected == null) {
@@ -177,7 +176,9 @@ public class PluginManagerGUI extends JFrame {
                     remoteHelper.downloadFile(remotePath, temp);
                     writePluginInfoFromFile(temp);
                 } finally {
-                    temp.delete();
+                    if(!temp.delete()) {
+                        temp.deleteOnExit();
+                    }
                 }
             } else {
                 if (pluginDirectory == null) {
@@ -235,7 +236,7 @@ public class PluginManagerGUI extends JFrame {
             infoBuilder.append("No commands available\n");
         }
         infoBuilder.append("\nAuthors:\n");
-        if (authors != null && !authors.isEmpty()) {
+        if (!authors.isEmpty()) {
             for (String author : authors) {
                 infoBuilder.append(" - ").append(author).append("\n");
             }
@@ -304,21 +305,27 @@ public class PluginManagerGUI extends JFrame {
                     if (remoteMode) {
                         if (remoteHelper == null || !remoteHelper.isConnected()) {
                             JOptionPane.showMessageDialog(this, "Not connected to remote.", "Error", JOptionPane.ERROR_MESSAGE);
-                            temp.delete();
+                            if(!temp.delete()) {
+                                temp.deleteOnExit();
+                            }
                             return;
                         }
                         remoteHelper.installPlugin(temp, remotePluginPath);
                     } else {
                         if (pluginDirectory == null) {
                             JOptionPane.showMessageDialog(this, "No local plugin directory selected.", "Error", JOptionPane.ERROR_MESSAGE);
-                            temp.delete();
+                            if(!temp.delete()) {
+                                temp.deleteOnExit();
+                            }
                             return;
                         }
                         String fileName = url.substring(url.lastIndexOf('/') + 1);
                         File destFile = new File(pluginDirectory, fileName);
                         Files.copy(temp.toPath(), destFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
                     }
-                    temp.delete();
+                    if(!temp.delete()) {
+                        temp.deleteOnExit();
+                    }
                     loadAvailablePlugins();
                     loadInstalledPlugins();
                     JOptionPane.showMessageDialog(this, "Plugin installed from URL");
