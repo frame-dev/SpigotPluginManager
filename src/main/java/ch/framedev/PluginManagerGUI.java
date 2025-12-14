@@ -15,8 +15,14 @@ import java.util.Map;
 
 public class PluginManagerGUI extends JFrame {
 
-    // Currently selected plugin directory
+    // Currently selected plugin directory (local)
     private File pluginDirectory;
+
+    // Remote support
+    private RemoteHelper remoteHelper;
+    private boolean remoteMode = false;
+    private String remotePluginPath; // e.g. /home/mc/server/plugins
+    private String remoteConnectionLabel; // e.g. user@host:/path
 
     // Suffix for disabled plugins, loaded from config (default: .disabled)
     private static String DISABLED_SUFFIX = Main.config.getString("suffix-for-disabled-plugins", ".disabled");
@@ -153,60 +159,90 @@ public class PluginManagerGUI extends JFrame {
     @SuppressWarnings("unchecked")
     private void updatePluginInfo() {
         String selected = availablePluginsList.getSelectedValue();
-        if (selected == null || pluginDirectory == null) {
+        if (selected == null) {
             infoArea.setText("");
             return;
         }
-        File pluginFile = new File(pluginDirectory, selected);
-        if (pluginFile.exists() && (selected.endsWith(".jar") || selected.endsWith(DISABLED_SUFFIX))) {
-            String name = PluginHelper.getPluginName(pluginFile);
-            String version = PluginHelper.getPluginVersion(pluginFile);
-            String mainClass = PluginHelper.getPluginMainClass(pluginFile);
-            String description = PluginHelper.getPluginDescription(pluginFile);
-            Map<String, Object> commands = PluginHelper.getCommands(pluginFile);
-            List<String> authors = PluginHelper.getPluginAuthors(pluginFile);
-            double apiVersion = PluginHelper.getPluginAPIVersion(pluginFile);
-            StringBuilder infoBuilder = new StringBuilder();
-            infoBuilder.append("Name: ").append(name != null ? name : "Unknown").append("\n");
-            infoBuilder.append("Version: ").append(version != null ? version : "Unknown").append("\n\n");
-            infoBuilder.append("Main Class: ").append(mainClass != null ? mainClass : "Unknown").append("\n\n");
-            infoBuilder.append("Description:\n").append(description != null ? description : "No description available").append("\n\n");
-            infoBuilder.append("API Version: ").append(apiVersion != 0.0 ? apiVersion : "Unknown").append("\n");
-            infoBuilder.append("\nCommands:\n");
-            if (commands != null && !commands.isEmpty()) {
-                for (String cmd : commands.keySet()) {
-                    infoBuilder.append(" - ").append(cmd).append("\n");
-                    if (commands.get(cmd) instanceof Map) {
-                        Map<String, Object> cmdDetails = (Map<String, Object>) commands.get(cmd);
-                        if (cmdDetails.containsKey("description")) {
-                            infoBuilder.append("     Description: ").append(cmdDetails.get("description")).append("\n");
-                        }
-                        if (cmdDetails.containsKey("usage")) {
-                            infoBuilder.append("     Usage: ").append(cmdDetails.get("usage")).append("\n");
-                        }
-                        if (cmdDetails.containsKey("aliases")) {
-                            infoBuilder.append("     Aliases: ").append(cmdDetails.get("aliases")).append("\n");
-                        }
-                        if(cmdDetails.containsKey("permission")) {
-                            infoBuilder.append("     Permission: ").append(cmdDetails.get("permission")).append("\n");
-                        }
+
+        try {
+            if (remoteMode) {
+                if (remoteHelper == null || !remoteHelper.isConnected() || remotePluginPath == null) {
+                    infoArea.setText("Remote not connected");
+                    return;
+                }
+                // download temporarily
+                File temp = Files.createTempFile("plugin_", ".jar").toFile();
+                try {
+                    String remotePath = remotePluginPath.endsWith("/") ? remotePluginPath + selected : remotePluginPath + "/" + selected;
+                    remoteHelper.downloadFile(remotePath, temp);
+                    writePluginInfoFromFile(temp);
+                } finally {
+                    temp.delete();
+                }
+            } else {
+                if (pluginDirectory == null) {
+                    infoArea.setText("");
+                    return;
+                }
+                File pluginFile = new File(pluginDirectory, selected);
+                if (pluginFile.exists() && (selected.endsWith(".jar") || selected.endsWith(DISABLED_SUFFIX))) {
+                    writePluginInfoFromFile(pluginFile);
+                } else {
+                    infoArea.setText("Not a plugin file");
+                }
+            }
+        } catch (Exception ex) {
+            infoArea.setText("Failed to read plugin info: " + ex.getMessage());
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private void writePluginInfoFromFile(File pluginFile) {
+        String name = PluginHelper.getPluginName(pluginFile);
+        String version = PluginHelper.getPluginVersion(pluginFile);
+        String mainClass = PluginHelper.getPluginMainClass(pluginFile);
+        String description = PluginHelper.getPluginDescription(pluginFile);
+        Map<String, Object> commands = PluginHelper.getCommands(pluginFile);
+        List<String> authors = PluginHelper.getPluginAuthors(pluginFile);
+        double apiVersion = PluginHelper.getPluginAPIVersion(pluginFile);
+        StringBuilder infoBuilder = new StringBuilder();
+        infoBuilder.append("Name: ").append(name != null ? name : "Unknown").append("\n");
+        infoBuilder.append("Version: ").append(version != null ? version : "Unknown").append("\n\n");
+        infoBuilder.append("Main Class: ").append(mainClass != null ? mainClass : "Unknown").append("\n\n");
+        infoBuilder.append("Description:\n").append(description != null ? description : "No description available").append("\n\n");
+        infoBuilder.append("API Version: ").append(apiVersion != 0.0 ? apiVersion : "Unknown").append("\n");
+        infoBuilder.append("\nCommands:\n");
+        if (commands != null && !commands.isEmpty()) {
+            for (String cmd : commands.keySet()) {
+                infoBuilder.append(" - ").append(cmd).append("\n");
+                if (commands.get(cmd) instanceof Map) {
+                    Map<String, Object> cmdDetails = (Map<String, Object>) commands.get(cmd);
+                    if (cmdDetails.containsKey("description")) {
+                        infoBuilder.append("     Description: ").append(cmdDetails.get("description")).append("\n");
+                    }
+                    if (cmdDetails.containsKey("usage")) {
+                        infoBuilder.append("     Usage: ").append(cmdDetails.get("usage")).append("\n");
+                    }
+                    if (cmdDetails.containsKey("aliases")) {
+                        infoBuilder.append("     Aliases: ").append(cmdDetails.get("aliases")).append("\n");
+                    }
+                    if (cmdDetails.containsKey("permission")) {
+                        infoBuilder.append("     Permission: ").append(cmdDetails.get("permission")).append("\n");
                     }
                 }
-            } else {
-                infoBuilder.append("No commands available\n");
             }
-            infoBuilder.append("\nAuthors:\n");
-            if (!authors.isEmpty()) {
-                for (String author : authors) {
-                    infoBuilder.append(" - ").append(author).append("\n");
-                }
-            } else {
-                infoBuilder.append("No authors available\n");
-            }
-            infoArea.setText(infoBuilder.toString());
         } else {
-            infoArea.setText("Not a plugin file");
+            infoBuilder.append("No commands available\n");
         }
+        infoBuilder.append("\nAuthors:\n");
+        if (authors != null && !authors.isEmpty()) {
+            for (String author : authors) {
+                infoBuilder.append(" - ").append(author).append("\n");
+            }
+        } else {
+            infoBuilder.append("No authors available\n");
+        }
+        infoArea.setText(infoBuilder.toString());
     }
 
     /**
@@ -230,15 +266,27 @@ public class PluginManagerGUI extends JFrame {
             int returnValue = fileChooser.showOpenDialog(this);
             if (returnValue == JFileChooser.APPROVE_OPTION) {
                 File selectedFile = fileChooser.getSelectedFile();
-                if (selectedFile != null && pluginDirectory != null) {
-                    File destFile = new File(pluginDirectory, selectedFile.getName());
+                if (selectedFile != null) {
                     try {
-                        Files.copy(selectedFile.toPath(), destFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                        if (remoteMode) {
+                            if (remoteHelper == null || !remoteHelper.isConnected()) {
+                                JOptionPane.showMessageDialog(this, "Not connected to remote.", "Error", JOptionPane.ERROR_MESSAGE);
+                                return;
+                            }
+                            remoteHelper.installPlugin(selectedFile, remotePluginPath);
+                        } else {
+                            if (pluginDirectory == null) {
+                                JOptionPane.showMessageDialog(this, "No local plugin directory selected.", "Error", JOptionPane.ERROR_MESSAGE);
+                                return;
+                            }
+                            File destFile = new File(pluginDirectory, selectedFile.getName());
+                            Files.copy(selectedFile.toPath(), destFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                        }
                         loadAvailablePlugins();
                         loadInstalledPlugins();
                         JOptionPane.showMessageDialog(this, "Plugin installed: " + selectedFile.getName());
                     } catch (Exception ex) {
-                        JOptionPane.showMessageDialog(this, "Failed to install plugin: " + selectedFile.getName(), "Error", JOptionPane.ERROR_MESSAGE);
+                        JOptionPane.showMessageDialog(this, "Failed to install plugin: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
                     }
                 }
             }
@@ -246,61 +294,115 @@ public class PluginManagerGUI extends JFrame {
 
         installFromURLButton.addActionListener(e -> {
             String url = JOptionPane.showInputDialog(this, "Enter Plugin URL:");
-            if (url != null && !url.trim().isEmpty() && pluginDirectory != null) {
-                try (InputStream in = new URI(url).toURL().openStream()) {
-                    String fileName = url.substring(url.lastIndexOf('/') + 1);
-                    File destFile = new File(pluginDirectory, fileName);
-                    Files.copy(in, destFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            if (url != null && !url.trim().isEmpty()) {
+                try {
+                    // download locally first
+                    File temp = Files.createTempFile("download_plugin_", ".jar").toFile();
+                    try (InputStream in = new URI(url).toURL().openStream()) {
+                        Files.copy(in, temp.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                    }
+                    if (remoteMode) {
+                        if (remoteHelper == null || !remoteHelper.isConnected()) {
+                            JOptionPane.showMessageDialog(this, "Not connected to remote.", "Error", JOptionPane.ERROR_MESSAGE);
+                            temp.delete();
+                            return;
+                        }
+                        remoteHelper.installPlugin(temp, remotePluginPath);
+                    } else {
+                        if (pluginDirectory == null) {
+                            JOptionPane.showMessageDialog(this, "No local plugin directory selected.", "Error", JOptionPane.ERROR_MESSAGE);
+                            temp.delete();
+                            return;
+                        }
+                        String fileName = url.substring(url.lastIndexOf('/') + 1);
+                        File destFile = new File(pluginDirectory, fileName);
+                        Files.copy(temp.toPath(), destFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                    }
+                    temp.delete();
                     loadAvailablePlugins();
                     loadInstalledPlugins();
-                    JOptionPane.showMessageDialog(this, "Plugin installed from URL: " + fileName);
+                    JOptionPane.showMessageDialog(this, "Plugin installed from URL");
                 } catch (Exception ex) {
-                    JOptionPane.showMessageDialog(this, "Failed to install plugin from URL.", "Error", JOptionPane.ERROR_MESSAGE);
+                    JOptionPane.showMessageDialog(this, "Failed to install plugin from URL: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
                 }
             }
         });
 
         enableButton.addActionListener(e -> {
             String selected = availablePluginsList.getSelectedValue();
-            if (selected != null && pluginDirectory != null && selected.endsWith(DISABLED_SUFFIX)) {
-                File disabledFile = new File(pluginDirectory, selected);
-                String restoredName = selected.replaceFirst(DISABLED_SUFFIX + "$", "");
-                File pluginFile = new File(pluginDirectory, restoredName);
-                if (disabledFile.renameTo(pluginFile)) {
+            if (selected != null) {
+                try {
+                    if (remoteMode) {
+                        if (remoteHelper == null || !remoteHelper.isConnected()) {
+                            JOptionPane.showMessageDialog(this, "Not connected to remote.", "Error", JOptionPane.ERROR_MESSAGE);
+                            return;
+                        }
+                        if (!selected.endsWith(DISABLED_SUFFIX)) return;
+                        remoteHelper.enablePlugin(remotePluginPath, selected, DISABLED_SUFFIX);
+                    } else {
+                        if (pluginDirectory == null) return;
+                        if (!selected.endsWith(DISABLED_SUFFIX)) return;
+                        File disabledFile = new File(pluginDirectory, selected);
+                        String restoredName = selected.replaceFirst(DISABLED_SUFFIX + "$", "");
+                        File pluginFile = new File(pluginDirectory, restoredName);
+                        if (!disabledFile.renameTo(pluginFile)) throw new Exception("rename failed");
+                    }
                     loadAvailablePlugins();
                     loadInstalledPlugins();
-                    JOptionPane.showMessageDialog(this, "Plugin enabled: " + restoredName);
-                } else {
-                    JOptionPane.showMessageDialog(this, "Failed to enable plugin: " + selected, "Error", JOptionPane.ERROR_MESSAGE);
+                    JOptionPane.showMessageDialog(this, "Plugin enabled: " + selected);
+                } catch (Exception ex) {
+                    JOptionPane.showMessageDialog(this, "Failed to enable plugin: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
                 }
             }
         });
 
         disableButton.addActionListener(e -> {
             String selected = availablePluginsList.getSelectedValue();
-            if (selected != null && pluginDirectory != null && selected.endsWith(".jar")) {
-                File pluginFile = new File(pluginDirectory, selected);
-                File disabledFile = new File(pluginDirectory, selected + DISABLED_SUFFIX);
-                if (pluginFile.renameTo(disabledFile)) {
+            if (selected != null) {
+                try {
+                    if (remoteMode) {
+                        if (remoteHelper == null || !remoteHelper.isConnected()) {
+                            JOptionPane.showMessageDialog(this, "Not connected to remote.", "Error", JOptionPane.ERROR_MESSAGE);
+                            return;
+                        }
+                        if (!selected.endsWith(".jar")) return;
+                        remoteHelper.disablePlugin(remotePluginPath, selected, DISABLED_SUFFIX);
+                    } else {
+                        if (pluginDirectory == null) return;
+                        if (!selected.endsWith(".jar")) return;
+                        File pluginFile = new File(pluginDirectory, selected);
+                        File disabledFile = new File(pluginDirectory, selected + DISABLED_SUFFIX);
+                        if (!pluginFile.renameTo(disabledFile)) throw new Exception("rename failed");
+                    }
                     loadAvailablePlugins();
                     loadInstalledPlugins();
                     JOptionPane.showMessageDialog(this, "Plugin disabled: " + selected);
-                } else {
-                    JOptionPane.showMessageDialog(this, "Failed to disable plugin: " + selected, "Error", JOptionPane.ERROR_MESSAGE);
+                } catch (Exception ex) {
+                    JOptionPane.showMessageDialog(this, "Failed to disable plugin: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
                 }
             }
         });
 
         uninstallButton.addActionListener(e -> {
             String selected = installedPluginsList.getSelectedValue();
-            if (selected != null && pluginDirectory != null) {
-                File pluginFile = new File(pluginDirectory, selected);
-                if (pluginFile.delete()) {
+            if (selected != null) {
+                try {
+                    if (remoteMode) {
+                        if (remoteHelper == null || !remoteHelper.isConnected()) {
+                            JOptionPane.showMessageDialog(this, "Not connected to remote.", "Error", JOptionPane.ERROR_MESSAGE);
+                            return;
+                        }
+                        remoteHelper.uninstallPlugin(remotePluginPath, selected);
+                    } else {
+                        if (pluginDirectory == null) return;
+                        File pluginFile = new File(pluginDirectory, selected);
+                        if (!pluginFile.delete()) throw new Exception("delete failed");
+                    }
                     loadAvailablePlugins();
                     loadInstalledPlugins();
                     JOptionPane.showMessageDialog(this, "Plugin uninstalled: " + selected);
-                } else {
-                    JOptionPane.showMessageDialog(this, "Failed to uninstall plugin: " + selected, "Error", JOptionPane.ERROR_MESSAGE);
+                } catch (Exception ex) {
+                    JOptionPane.showMessageDialog(this, "Failed to uninstall plugin: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
                 }
             }
         });
@@ -319,6 +421,8 @@ public class PluginManagerGUI extends JFrame {
 
         JMenu fileMenu = new JMenu("File");
         JMenuItem selectItem = new JMenuItem("Select Plugin Folder ...");
+        JMenuItem connectRemoteItem = new JMenuItem("Connect Remote...");
+        JMenuItem disconnectRemoteItem = new JMenuItem("Disconnect Remote");
         JMenuItem exitItem = new JMenuItem("Exit");
         exitItem.addActionListener(e -> System.exit(0));
         selectItem.addActionListener(listener -> {
@@ -328,6 +432,9 @@ public class PluginManagerGUI extends JFrame {
             if (returnValue == JFileChooser.APPROVE_OPTION) {
                 File selectedDirectory = fileChooser.getSelectedFile();
                 if (selectedDirectory != null && selectedDirectory.isDirectory()) {
+                    // turn off remote mode when selecting local folder
+                    remoteMode = false;
+                    if (remoteHelper != null) remoteHelper.disconnect();
                     this.pluginDirectory = selectedDirectory;
                     this.selectedDirLabel.setText("Selected Directory: " + selectedDirectory.getAbsolutePath());
                     loadAvailablePlugins();
@@ -339,10 +446,66 @@ public class PluginManagerGUI extends JFrame {
                 }
             }
         });
+
+        connectRemoteItem.addActionListener(e -> {
+            JTextField hostField = new JTextField();
+            JTextField portField = new JTextField("22");
+            JTextField userField = new JTextField();
+            JPasswordField passField = new JPasswordField();
+            JTextField pathField = new JTextField("/plugins");
+            Object[] inputs = {
+                    "Host:", hostField,
+                    "Port:", portField,
+                    "Username:", userField,
+                    "Password:", passField,
+                    "Remote plugin path:", pathField
+            };
+            int result = JOptionPane.showConfirmDialog(this, inputs, "Connect Remote", JOptionPane.OK_CANCEL_OPTION);
+            if (result == JOptionPane.OK_OPTION) {
+                try {
+                    String host = hostField.getText().trim();
+                    int port = Integer.parseInt(portField.getText().trim());
+                    String user = userField.getText().trim();
+                    String pass = new String(passField.getPassword());
+                    String path = pathField.getText().trim();
+                    if (host.isEmpty() || user.isEmpty() || path.isEmpty())
+                        throw new IllegalArgumentException("Missing fields");
+
+                    if (remoteHelper != null) remoteHelper.disconnect();
+                    remoteHelper = new RemoteHelper();
+                    remoteHelper.connect(host, port, user, pass, 10000);
+                    remoteMode = true;
+                    remotePluginPath = path;
+                    remoteConnectionLabel = user + "@" + host + ":" + path;
+                    this.selectedDirLabel.setText("Remote: " + remoteConnectionLabel);
+                    loadAvailablePlugins();
+                    loadInstalledPlugins();
+                } catch (Exception ex) {
+                    JOptionPane.showMessageDialog(this, "Failed to connect: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                    remoteMode = false;
+                    if (remoteHelper != null) remoteHelper.disconnect();
+                    remoteHelper = null;
+                }
+            }
+        });
+
+        disconnectRemoteItem.addActionListener(e -> {
+            if (remoteHelper != null) {
+                remoteHelper.disconnect();
+                remoteHelper = null;
+            }
+            remoteMode = false;
+            remotePluginPath = null;
+            remoteConnectionLabel = null;
+            this.selectedDirLabel.setText("No directory selected");
+            availableModel.clear();
+            installedModel.clear();
+        });
+
         JMenuItem aboutItem = new JMenuItem("About");
         aboutItem.addActionListener(e -> JOptionPane.showMessageDialog(this, "Spigot Plugin Manager\nVersion 1.2-SNAPSHOT\nDeveloped by FrameDev", "About", JOptionPane.INFORMATION_MESSAGE));
         JMenuItem helpItem = new JMenuItem("Help");
-        helpItem.addActionListener(e -> JOptionPane.showMessageDialog(this, "To use this application, select your Spigot plugin directory from the File menu.\nYou can install, uninstall, enable, and disable plugins using the provided buttons.", "Help", JOptionPane.INFORMATION_MESSAGE));
+        helpItem.addActionListener(e -> JOptionPane.showMessageDialog(this, "To use this application, select your Spigot plugin directory from the File menu or connect to a remote server.\nYou can install, uninstall, enable, and disable plugins using the provided buttons.", "Help", JOptionPane.INFORMATION_MESSAGE));
         JMenuItem settingsItem = new JMenuItem("Settings");
         settingsItem.addActionListener(e -> {
             SettingsGUI settingsGUI = new SettingsGUI();
@@ -350,6 +513,8 @@ public class PluginManagerGUI extends JFrame {
         });
 
         fileMenu.add(selectItem);
+        fileMenu.add(connectRemoteItem);
+        fileMenu.add(disconnectRemoteItem);
         fileMenu.add(helpItem);
         fileMenu.add(aboutItem);
         fileMenu.addSeparator();
@@ -364,26 +529,48 @@ public class PluginManagerGUI extends JFrame {
     private void loadAvailablePlugins() {
         DISABLED_SUFFIX = Main.config.getString("suffix-for-disabled-plugins", ".disabled");
         availableModel.clear();
-        if (pluginDirectory == null) return;
-        File[] files = pluginDirectory.listFiles();
-        if (files != null) {
-            for (File file : files) {
-                if (!file.isDirectory())
-                    availableModel.addElement(file.getName());
+        try {
+            if (remoteMode) {
+                if (remoteHelper == null || !remoteHelper.isConnected() || remotePluginPath == null) return;
+                for (String name : remoteHelper.listPlugins(remotePluginPath)) {
+                    availableModel.addElement(name);
+                }
+            } else {
+                if (pluginDirectory == null) return;
+                File[] files = pluginDirectory.listFiles();
+                if (files != null) {
+                    for (File file : files) {
+                        if (!file.isDirectory())
+                            availableModel.addElement(file.getName());
+                    }
+                }
             }
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Failed to list available plugins: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
         }
         updateButtons();
     }
 
     private void loadInstalledPlugins() {
         installedModel.clear();
-        if (pluginDirectory == null) return;
-        File[] files = pluginDirectory.listFiles((dir, name) -> name.endsWith(".jar"));
-        if (files != null) {
-            for (File file : files) {
-                if (!file.isDirectory())
-                    installedModel.addElement(file.getName());
+        try {
+            if (remoteMode) {
+                if (remoteHelper == null || !remoteHelper.isConnected() || remotePluginPath == null) return;
+                for (String name : remoteHelper.listPlugins(remotePluginPath)) {
+                    if (name.endsWith(".jar")) installedModel.addElement(name);
+                }
+            } else {
+                if (pluginDirectory == null) return;
+                File[] files = pluginDirectory.listFiles((dir, name) -> name.endsWith(".jar"));
+                if (files != null) {
+                    for (File file : files) {
+                        if (!file.isDirectory())
+                            installedModel.addElement(file.getName());
+                    }
+                }
             }
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Failed to list installed plugins: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
         }
         updateButtons();
     }
