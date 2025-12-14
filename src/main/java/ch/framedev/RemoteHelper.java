@@ -6,6 +6,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Vector;
 
 /**
@@ -61,9 +62,9 @@ public class RemoteHelper {
 
     // List files in remote directory
     @SuppressWarnings("unchecked")
-    public java.util.List<String> listFiles(String remoteDir) throws SftpException {
+    public List<String> listFiles(String remoteDir) throws SftpException {
         Vector<ChannelSftp.LsEntry> entries = sftp.ls(remoteDir);
-        java.util.List<String> names = new ArrayList<>();
+        List<String> names = new ArrayList<>();
         for (ChannelSftp.LsEntry e : entries) {
             if (!".".equals(e.getFilename()) && !"..".equals(e.getFilename()) && !e.getAttrs().isDir() && !e.getFilename().startsWith(".")) {
                 names.add(e.getFilename());
@@ -102,7 +103,7 @@ public class RemoteHelper {
     }
 
     // Convenience operations
-    public java.util.List<String> listPlugins(String remoteDir) throws SftpException {
+    public List<String> listPlugins(String remoteDir) throws SftpException {
         return listFiles(remoteDir);
     }
 

@@ -197,6 +197,9 @@ public class PluginManagerGUI extends JFrame {
         }
     }
 
+    /**
+     * Write plugin info to the info area from the given plugin file
+     */
     @SuppressWarnings("unchecked")
     private void writePluginInfoFromFile(File pluginFile) {
         String name = PluginHelper.getPluginName(pluginFile);
