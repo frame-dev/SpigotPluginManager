@@ -118,4 +118,12 @@ public class PluginHelper {
         }
         return List.of();
     }
+
+    public static Double getPluginAPIVersion(File pluginFile) {
+        Map<String, Object> pluginYml = getPluginYml(pluginFile);
+        if (pluginYml != null) {
+            return (Double) pluginYml.get("api-version");
+        }
+        return 0.0;
+    }
 }

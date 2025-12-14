@@ -146,6 +146,7 @@ public class PluginManagerGUI extends JFrame {
     /**
      * Update the plugin info area based on selection
      */
+    @SuppressWarnings("unchecked")
     private void updatePluginInfo() {
         String selected = availablePluginsList.getSelectedValue();
         if (selected == null || pluginDirectory == null) {
@@ -159,10 +160,12 @@ public class PluginManagerGUI extends JFrame {
             String description = PluginHelper.getPluginDescription(pluginFile);
             Map<String, Object> commands = PluginHelper.getCommands(pluginFile);
             List<String> authors = PluginHelper.getPluginAuthors(pluginFile);
+            double apiVersion = PluginHelper.getPluginAPIVersion(pluginFile);
             StringBuilder infoBuilder = new StringBuilder();
             infoBuilder.append("Name: ").append(name != null ? name : "Unknown").append("\n");
             infoBuilder.append("Version: ").append(version != null ? version : "Unknown").append("\n\n");
             infoBuilder.append("Description:\n").append(description != null ? description : "No description available").append("\n");
+            infoBuilder.append("API Version: ").append(apiVersion != 0.0 ? apiVersion : "Unknown").append("\n");
             infoBuilder.append("\nCommands:\n");
             if (commands != null && !commands.isEmpty()) {
                 for (String cmd : commands.keySet()) {
@@ -177,6 +180,9 @@ public class PluginManagerGUI extends JFrame {
                         }
                         if (cmdDetails.containsKey("aliases")) {
                             infoBuilder.append("     Aliases: ").append(cmdDetails.get("aliases")).append("\n");
+                        }
+                        if(cmdDetails.containsKey("permission")) {
+                            infoBuilder.append("     Permission: ").append(cmdDetails.get("permission")).append("\n");
                         }
                     }
                 }
