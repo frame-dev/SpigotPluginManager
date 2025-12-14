@@ -10,7 +10,7 @@ This project uses the Java Swing framework for the GUI (Desktop Environment requ
 - **Enable or disable plugins** by renaming them with a configurable suffix
 - **Customizable settings** for plugin management
 - **User-friendly graphical interface**
-- **Display Plugin Information** such as name, version, description, and authors
+- **Display Plugin Information** such as name, version, description, authors and more.
 
 ## Requirements
 

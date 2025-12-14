@@ -119,11 +119,31 @@ public class PluginHelper {
         return List.of();
     }
 
-    public static Double getPluginAPIVersion(File pluginFile) {
+    /**
+     * Retrieves the API version of the plugin from its plugin.yml file.
+     *
+     * @param pluginFile The plugin JAR file.
+     * @return The API version of the plugin, or 0.0 if not found.
+     */
+    public static double getPluginAPIVersion(File pluginFile) {
         Map<String, Object> pluginYml = getPluginYml(pluginFile);
         if (pluginYml != null) {
-            return (Double) pluginYml.get("api-version");
+            return (double) pluginYml.get("api-version");
         }
         return 0.0;
+    }
+
+    /**
+     * Retrieves the main class of the plugin from its plugin.yml file.
+     *
+     * @param pluginFile The plugin JAR file.
+     * @return The main class of the plugin, or null if not found.
+     */
+    public static String getPluginMainClass(File pluginFile) {
+        Map<String, Object> pluginYml = getPluginYml(pluginFile);
+        if (pluginYml != null) {
+            return (String) pluginYml.get("main");
+        }
+        return null;
     }
 }

@@ -15,8 +15,10 @@ import java.util.Map;
 
 public class PluginManagerGUI extends JFrame {
 
+    // Currently selected plugin directory
     private File pluginDirectory;
 
+    // Suffix for disabled plugins, loaded from config (default: .disabled)
     private static String DISABLED_SUFFIX = Main.config.getString("suffix-for-disabled-plugins", ".disabled");
 
     private final JLabel selectedDirLabel;
@@ -32,6 +34,7 @@ public class PluginManagerGUI extends JFrame {
     private final JButton installFromURLButton;
     private final JButton uninstallButton;
 
+    // Plugin info display area
     private final JTextArea infoArea;
 
     public PluginManagerGUI() {
@@ -54,12 +57,12 @@ public class PluginManagerGUI extends JFrame {
 
         if (Main.config.containsKey("plugin-directory") && Main.config.getBoolean("start-with-latest-folder", true)) {
             this.pluginDirectory = new File(Main.config.getString("plugin-directory"));
-            if (this.pluginDirectory.isDirectory()) {
+            if (!this.pluginDirectory.isDirectory()) {
+                this.selectedDirLabel = new JLabel("No directory selected", SwingConstants.CENTER);
+            } else {
                 this.selectedDirLabel = new JLabel("Selected Directory: " + this.pluginDirectory.getAbsolutePath(), SwingConstants.CENTER);
                 loadAvailablePlugins();
                 loadInstalledPlugins();
-            } else {
-                this.selectedDirLabel = new JLabel("No directory selected", SwingConstants.CENTER);
             }
         } else {
             this.selectedDirLabel = new JLabel("No directory selected", SwingConstants.CENTER);
@@ -126,6 +129,7 @@ public class PluginManagerGUI extends JFrame {
         // Initial button state update
         updateButtons();
 
+        // First run welcome message and setup
         if (!Main.config.containsKey("first-run")) {
             Main.config.set("first-run", true);
             Main.config.save();
@@ -157,6 +161,7 @@ public class PluginManagerGUI extends JFrame {
         if (pluginFile.exists() && (selected.endsWith(".jar") || selected.endsWith(DISABLED_SUFFIX))) {
             String name = PluginHelper.getPluginName(pluginFile);
             String version = PluginHelper.getPluginVersion(pluginFile);
+            String mainClass = PluginHelper.getPluginMainClass(pluginFile);
             String description = PluginHelper.getPluginDescription(pluginFile);
             Map<String, Object> commands = PluginHelper.getCommands(pluginFile);
             List<String> authors = PluginHelper.getPluginAuthors(pluginFile);
@@ -164,7 +169,8 @@ public class PluginManagerGUI extends JFrame {
             StringBuilder infoBuilder = new StringBuilder();
             infoBuilder.append("Name: ").append(name != null ? name : "Unknown").append("\n");
             infoBuilder.append("Version: ").append(version != null ? version : "Unknown").append("\n\n");
-            infoBuilder.append("Description:\n").append(description != null ? description : "No description available").append("\n");
+            infoBuilder.append("Main Class: ").append(mainClass != null ? mainClass : "Unknown").append("\n\n");
+            infoBuilder.append("Description:\n").append(description != null ? description : "No description available").append("\n\n");
             infoBuilder.append("API Version: ").append(apiVersion != 0.0 ? apiVersion : "Unknown").append("\n");
             infoBuilder.append("\nCommands:\n");
             if (commands != null && !commands.isEmpty()) {
